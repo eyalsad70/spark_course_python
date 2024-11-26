@@ -25,14 +25,16 @@ max_date_df = dates_df_new.groupBy("day_of_week", "day_of_month") \
 print(max_date_df.count())
 
 # Join flights_df with max_date_df on day_of_week and day_of_month
-flights_with_latest_date_df = matched_df.join(
-    max_date_df, 
-    on=["day_of_week", "day_of_month"], 
-    how="left"
-)
+flights_with_latest_date_df = matched_df.join(max_date_df, ["day_of_week", "day_of_month"])
 
 # Show the result (including the flight_date column)
 flights_with_latest_date_df.show(20)
+
+# Count rows where latest_date is null
+null_count = flights_with_latest_date_df.filter(F.col("latest_date").isNull()).count()
+
+# Print the result
+print(f"Number of rows with null latest_date: {null_count}")
 
 flights_with_latest_date_df.write.parquet('s3a://spark/data/transformed/flights/', mode='overwrite')
 
