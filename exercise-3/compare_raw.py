@@ -7,6 +7,8 @@ spark = SparkSession.builder.master("local[*]") \
     .appName('ex3_clean_flights') \
     .getOrCreate()
 
+spark.conf.set("spark.sql.shuffle.partitions", "10")  # Default is 200
+
 # Read parquet data into Spark DataFrames
 flights_df = spark.read.parquet('s3a://spark/data/source/flights/')
 flights_raw_df = spark.read.parquet('s3a://spark/data/source/flights_raw/')
@@ -25,8 +27,8 @@ unmatched_flights_raw = flights_raw_distinct_df.subtract(matched_df).withColumn(
 # Union the unmatched records from both DataFrames
 unmatched_df = unmatched_flights.union(unmatched_flights_raw)
 
-unmatched_df.count()
-#unmatched_df.show(50)
+print(unmatched_df.count())
+unmatched_df.show(50)
 
 # Write matched and unmatched DataFrames to S3 as Parquet files
 matched_df.write.parquet('s3a://spark/data/stg/flight_matched/', mode='overwrite')
