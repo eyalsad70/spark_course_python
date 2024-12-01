@@ -1,0 +1,6 @@
+# Ignore all files in a folder
+/Examples/
+
+# Ignore specific file types
+*.log
+*.csv
