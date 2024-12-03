@@ -4,3 +4,4 @@
 # Ignore specific file types
 *.log
 *.csv
+*.pdf
