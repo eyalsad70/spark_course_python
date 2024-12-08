@@ -6,15 +6,12 @@ and send a bulk of 20 events once every second to kafka
 import json
 from kafka import KafkaProducer
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import to_json, struct
-from pyspark.sql.functions import lit, col, expr
+from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType
 
 from time import sleep
 from datetime import datetime
 import json
-import random
-import uuid
 
 # Topics/Brokers
 topic1 = 'sensors-sample'
@@ -38,17 +35,25 @@ car_ids_df = cars_df.select("car_id")
 
 #######################################
 def create_car_events():
-    events = []
-    for row in car_ids_df.collect():
-        events.append((
-        str(uuid.uuid4()),  # Unique event ID
-        datetime.now(),  # Current timestamp
-        row['car_id'],  # Car ID from the Parquet file
-        random.randint(0, 200),  # Random speed
-        random.randint(0, 8000),  # Random RPM
-        random.randint(1, 7)  # Random gear
-        ))
-    events_df = spark.createDataFrame(events, schema=event_schema)
+    # Generate event data
+    events_df = car_ids_df \
+        .withColumn("event_id", F.expr("uuid()")) \
+        .withColumn("event_time", F.current_timestamp()) \
+        .withColumn("speed", F.floor(F.rand() * 201)) \
+        .withColumn("rpm", F.floor(F.rand() * 8001)) \
+        .withColumn("gear", F.floor(F.rand() * 7 + 1))
+
+    # Rearrange columns to make car_id the 3rd column (as requested in exercise sheet)
+    events_df = events_df.select(
+            "event_id",       # 1st column
+            "event_time",     # 2nd column
+            "car_id",         # 3rd column
+            "speed",          # 4th column
+            "rpm",            # 5th column
+            "gear"            # 6th column
+    )
+    # Show the generated events
+    #events_df.show(truncate=False)
     return events_df
 ######################################
 
@@ -57,7 +62,7 @@ producer = KafkaProducer(bootstrap_servers=brokers, value_serializer=lambda v: j
 while 1:
     # send car events once per second
     events_df = create_car_events()
-    #events_df.show(1)
+    #events_df.show(2)
     # Convert each row to a JSON string
     json_df = events_df.toJSON()
     print(json_df.take(2))
@@ -65,4 +70,4 @@ while 1:
     for record in json_df.collect():
         producer.send(topic1, value=record)
     producer.flush()
-    sleep(2)
+    sleep(1)
